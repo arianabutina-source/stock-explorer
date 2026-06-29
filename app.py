@@ -110,10 +110,19 @@ TICKERS = {"AAPL": "Apple", "MSFT": "Microsoft", "GOOG": "Google", "AMZN": "Amaz
 
 @st.cache_data
 def load_data():
+    import datetime
     symbols = ["AAPL", "MSFT", "GOOG", "AMZN", "NFLX", "META", "^GSPC", "^DJI", "^IXIC", "TQQQ"]
-    raw = yf.download(symbols, start="2018-01-01", end="2026-06-27", auto_adjust=True)["Close"]
+    end_date = datetime.date.today().isoformat()
+    raw = yf.download(symbols, start="2018-01-01", end=end_date, auto_adjust=True)
+    # yfinance v0.2+ returns a MultiIndex; collapse to just Close prices
+    if isinstance(raw.columns, pd.MultiIndex):
+        raw = raw["Close"]
+    else:
+        raw = raw["Close"]
     raw = raw.rename(columns={"^GSPC": "SP500", "^DJI": "DJI", "^IXIC": "NASDAQ"})
     raw = raw.dropna()
+    if raw.empty:
+        raise ValueError("No overlapping trading data found. Check your internet connection or try again later.")
     df = raw / raw.iloc[0]
     df.index.name = "date"
     df = df.reset_index()
